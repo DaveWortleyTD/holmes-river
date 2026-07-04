@@ -396,18 +396,28 @@
     };
 
     // ── Chart ────────────────────────────────────────────────────────────────
+    const DEFAULT_RANGE_HOURS = 168; // 1 week
     let chart, activeHours = null;
+
+    function rangeBounds(hours) {
+      const max = DateTime.now();
+      const min = max.minus({ hours });
+      return {
+        min: min.toISO(),
+        max: max.toISO(),
+        // Explicit tick unit so labels always show dates (auto-picks hours otherwise)
+        unit: hours <= 48 ? 'hour' : hours <= 720 ? 'day' : 'week',
+      };
+    }
 
     function setRange(hours, btn) {
       activeHours = hours;
       document.querySelectorAll('.ranges button').forEach(b => b.classList.remove('active'));
       if (btn) btn.classList.add('active');
-      const max = DateTime.now();
-      const min = max.minus({ hours });
-      chart.options.scales.x.min = min.toISO();
-      chart.options.scales.x.max = max.toISO();
-      // Explicit tick unit so labels always show dates (auto-picks hours otherwise)
-      chart.options.scales.x.time.unit = hours <= 48 ? 'hour' : hours <= 720 ? 'day' : 'week';
+      const { min, max, unit } = rangeBounds(hours);
+      chart.options.scales.x.min = min;
+      chart.options.scales.x.max = max;
+      chart.options.scales.x.time.unit = unit;
       chart.update('none');
     }
 
@@ -437,6 +447,11 @@
         const lastDt = DateTime.fromISO(last.ts);
         document.getElementById('updated').textContent =
           'Last reading ' + lastDt.toRelative() + ' (' + lastDt.toLocal().toFormat('d MMM HH:mm') + ')';
+
+        // Build the chart already scoped to the default range — narrowing a
+        // full-range chart after construction was unreliable on first paint.
+        activeHours = DEFAULT_RANGE_HOURS;
+        const initialRange = rangeBounds(DEFAULT_RANGE_HOURS);
 
         chart = new Chart(document.getElementById('chart'), {
           type: 'line',
@@ -483,7 +498,10 @@
             scales: {
               x: {
                 type: 'time',
+                min: initialRange.min,
+                max: initialRange.max,
                 time: {
+                  unit: initialRange.unit,
                   tooltipFormat: 'd MMM HH:mm',
                   displayFormats: { hour: 'ccc HH:mm', day: 'd MMM', week: 'd MMM' }
                 },
@@ -531,9 +549,8 @@
 
         renderObsList();
 
-        // Default to 1-week view
-        const weekBtn = document.querySelector('.ranges button[data-hours="168"]');
-        setRange(168, weekBtn);
+        // Chart was already built scoped to the default range; just highlight the button.
+        document.querySelector(`.ranges button[data-hours="${DEFAULT_RANGE_HOURS}"]`)?.classList.add('active');
       })
       .catch(err => {
         const el = document.getElementById('error');
