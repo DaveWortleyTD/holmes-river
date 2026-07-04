@@ -37,6 +37,7 @@ def _get_photos():
             "src": f"/photos/{Path(r['local_path']).name}" if r["local_path"] else "",
             "level": r["level"],
             "local_level": r["local_level"],
+            "segment_level": r["segment_level"],
             "corrected_level": r["corrected_level"],
             "confidence": r["confidence"] or "",
             "notes": r["notes"] or "",
@@ -128,10 +129,17 @@ def index():
   #btn-next {{ right: 0.75rem; }}
 
   .chart-wrap {{
-    height: 200px; flex-shrink: 0;
-    padding: 0.5rem 1rem 0.75rem;
+    height: 226px; flex-shrink: 0;
+    padding: 0.4rem 1rem 0.75rem;
     background: #1f2937; border-top: 1px solid #374151;
   }}
+  .series-toggles {{ display: flex; gap: 1.1rem; align-items: center; padding-bottom: 0.3rem; }}
+  .series-toggles label {{
+    font-size: 0.72rem; color: #d1d5db; cursor: pointer; user-select: none;
+    display: flex; align-items: center; gap: 0.32rem;
+  }}
+  .series-toggles input {{ accent-color: #3b82f6; }}
+  .swatch {{ width: 10px; height: 10px; border-radius: 2px; display: inline-block; }}
 </style>
 </head>
 <body>
@@ -151,6 +159,7 @@ def index():
   <span class="date"  id="date-val"></span>
   <span class="notes" id="notes-val"></span>
   <span style="font-size:0.78rem;white-space:nowrap;" id="local-val"></span>
+  <span style="font-size:0.78rem;white-space:nowrap;" id="segment-val"></span>
   <div class="correct-form">
     <label for="correction-input">Correct level:</label>
     <input id="correction-input" type="number" step="0.1" placeholder="e.g. 8.2">
@@ -166,7 +175,15 @@ def index():
 </div>
 
 <div class="chart-wrap">
-  <canvas id="chart"></canvas>
+  <div class="series-toggles">
+    <label><input type="checkbox" checked data-ds="0"><span class="swatch" style="background:#3b82f6"></span>Claude</label>
+    <label><input type="checkbox" checked data-ds="1"><span class="swatch" style="background:#a78bfa"></span>Corrected</label>
+    <label><input type="checkbox" checked data-ds="2"><span class="swatch" style="background:#f97316"></span>Local model</label>
+    <label><input type="checkbox" checked data-ds="3"><span class="swatch" style="background:#10b981"></span>Segment</label>
+  </div>
+  <div style="position:relative; height:176px;">
+    <canvas id="chart"></canvas>
+  </div>
 </div>
 
 <script>
@@ -215,13 +232,24 @@ function showPhoto(i) {{
     localEl.textContent = '';
   }}
 
+  // Segmentation pipeline comparison
+  const segEl = document.getElementById('segment-val');
+  if (p.segment_level != null) {{
+    const segDiff = p.corrected_level != null ? (p.segment_level - p.corrected_level).toFixed(1) : null;
+    const segDiffStr = segDiff != null ? ` (${{segDiff > 0 ? '+' : ''}}${{segDiff}})` : '';
+    segEl.textContent = `seg: ${{p.segment_level.toFixed(1)}}${{segDiffStr}}`;
+    segEl.style.color = segDiff != null && Math.abs(segDiff) <= 0.5 ? '#10b981' : '#fbbf24';
+  }} else {{
+    segEl.textContent = '';
+  }}
+
   // Pre-fill correction input with existing corrected value (or estimated)
   document.getElementById('correction-input').value =
     p.corrected_level != null ? p.corrected_level : (p.level != null ? p.level.toFixed(1) : '');
 
-  // Update chart highlight
-  const y = p.corrected_level ?? p.level;
-  chart.data.datasets[2].data = y != null ? [{{x: i, y}}] : [];
+  // Highlight selected point on chart (dataset 4 = Selected)
+  const y = p.corrected_level ?? p.local_level ?? p.level;
+  chart.data.datasets[4].data = y != null ? [{{x: i, y}}] : [];
   chart.update('none');
 }}
 
@@ -267,6 +295,9 @@ const corrPoints = PHOTOS
 const localPoints = PHOTOS
   .map((p, i) => p.local_level != null ? {{x: i, y: p.local_level}} : null)
   .filter(Boolean);
+const segPoints = PHOTOS
+  .map((p, i) => p.segment_level != null ? {{x: i, y: p.segment_level}} : null)
+  .filter(Boolean);
 
 const chart = new Chart(document.getElementById('chart'), {{
   type: 'scatter',
@@ -307,12 +338,26 @@ const chart = new Chart(document.getElementById('chart'), {{
         fill: false,
       }},
       {{
+        label: 'Segment',
+        data: segPoints,
+        showLine: true,
+        borderColor: '#10b981',
+        borderWidth: 1.5,
+        borderDash: [2, 2],
+        pointRadius: 3,
+        pointBackgroundColor: '#10b981',
+        pointBorderColor: 'transparent',
+        tension: 0.2,
+        fill: false,
+      }},
+      {{
         label: 'Selected',
         data: [],
         showLine: false,
-        pointRadius: 11,
-        pointBackgroundColor: 'transparent',
-        pointBorderColor: '#fff',
+        pointRadius: 9,
+        pointHoverRadius: 9,
+        pointBackgroundColor: '#facc15',
+        pointBorderColor: '#1f2937',
         pointBorderWidth: 2,
       }}
     ]
@@ -358,7 +403,14 @@ const chart = new Chart(document.getElementById('chart'), {{
   }}
 }});
 
-showPhoto(0);
+document.querySelectorAll('.series-toggles input').forEach(cb => {{
+  cb.onchange = () => {{
+    chart.setDatasetVisibility(parseInt(cb.dataset.ds), cb.checked);
+    chart.update('none');
+  }};
+}});
+
+showPhoto(PHOTOS.length - 1);
 </script>
 </body>
 </html>""")

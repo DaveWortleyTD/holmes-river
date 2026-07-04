@@ -1,0 +1,48 @@
+{
+  "marks": [
+    {
+      "level": 14,
+      "pixel_y": 43
+    },
+    {
+      "level": 13,
+      "pixel_y": 56
+    },
+    {
+      "level": 12,
+      "pixel_y": 66
+    },
+    {
+      "level": 11,
+      "pixel_y": 76
+    },
+    {
+      "level": 10,
+      "pixel_y": 86
+    },
+    {
+      "level": 9,
+      "pixel_y": 96
+    },
+    {
+      "level": 8,
+      "pixel_y": 107
+    },
+    {
+      "level": 7,
+      "pixel_y": 117
+    }
+  ],
+  "regression": {
+    "slope": -0.09612684779915769,
+    "intercept": 18.274258815756873
+  },
+  "calibration_photo": "photos/6a0fc6d1a53849c9ef94ea8e.jpg",
+  "waterline_y": 144,
+  "crop": {
+    "crop_x_start": 258,
+    "crop_x_end": 302,
+    "crop_y_start": 0,
+    "crop_y_end": 385
+  }
+}

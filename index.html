@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Holmes River Gauge</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      background: #0f172a;
+      color: #e2e8f0;
+      font-family: system-ui, -apple-system, sans-serif;
+      margin: 0;
+      padding: 20px;
+      min-height: 100vh;
+    }
+    header { margin-bottom: 20px; }
+    h1 { font-size: 1rem; color: #64748b; margin: 0 0 8px; letter-spacing: 0.05em; text-transform: uppercase; }
+    #current-level {
+      font-size: 3rem;
+      font-weight: 700;
+      color: #10b981;
+      line-height: 1;
+    }
+    #current-level span { font-size: 1.2rem; color: #94a3b8; font-weight: 400; margin-left: 4px; }
+    #updated { font-size: 0.8rem; color: #475569; margin-top: 6px; }
+    #chart-container {
+      position: relative;
+      height: 320px;
+      margin-top: 24px;
+    }
+    #error { color: #f87171; font-size: 0.9rem; display: none; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Holmes River</h1>
+    <div id="current-level">—<span>m</span></div>
+    <div id="updated">Loading…</div>
+  </header>
+  <div id="error"></div>
+  <div id="chart-container"><canvas id="chart"></canvas></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/luxon@3/build/global/luxon.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon@1/dist/chartjs-adapter-luxon.umd.min.js"></script>
+  <script>
+    const { DateTime } = luxon;
+
+    fetch('data.json')
+      .then(r => { if (!r.ok) throw new Error(r.statusText); return r.json(); })
+      .then(data => {
+        if (!data.length) {
+          document.getElementById('updated').textContent = 'No readings yet.';
+          return;
+        }
+
+        const last = data[data.length - 1];
+        const levelEl = document.getElementById('current-level');
+        levelEl.innerHTML = `${last.level.toFixed(1)}<span>m</span>`;
+
+        const lastDt = DateTime.fromISO(last.ts);
+        document.getElementById('updated').textContent =
+          'Last reading ' + lastDt.toRelative() + ' (' + lastDt.toLocal().toFormat('d MMM HH:mm') + ')';
+
+        new Chart(document.getElementById('chart'), {
+          type: 'line',
+          data: {
+            datasets: [{
+              label: 'Level (m)',
+              data: data.map(d => ({ x: d.ts, y: d.level })),
+              borderColor: '#10b981',
+              backgroundColor: 'rgba(16,185,129,0.08)',
+              borderWidth: 2,
+              pointRadius: 2,
+              pointHoverRadius: 5,
+              fill: true,
+              tension: 0.2,
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            scales: {
+              x: {
+                type: 'time',
+                time: { tooltipFormat: 'd MMM HH:mm' },
+                grid: { color: '#1e293b' },
+                ticks: { color: '#64748b', maxRotation: 0 }
+              },
+              y: {
+                min: 0,
+                title: { display: true, text: 'Level (m)', color: '#64748b' },
+                grid: { color: '#1e293b' },
+                ticks: { color: '#64748b' }
+              }
+            },
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                backgroundColor: '#1e293b',
+                borderColor: '#334155',
+                borderWidth: 1,
+                titleColor: '#94a3b8',
+                bodyColor: '#e2e8f0',
+                callbacks: { label: ctx => ` ${ctx.parsed.y.toFixed(1)} m` }
+              }
+            }
+          }
+        });
+      })
+      .catch(err => {
+        const el = document.getElementById('error');
+        el.textContent = 'Failed to load data: ' + err.message;
+        el.style.display = 'block';
+        document.getElementById('updated').textContent = '';
+      });
+  </script>
+</body>
+</html>

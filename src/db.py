@@ -21,7 +21,7 @@ def init_db(path: str) -> sqlite3.Connection:
         )
     """)
     # Safe migrations for columns added after initial schema
-    for col in ("corrected_level REAL", "local_level REAL"):
+    for col in ("corrected_level REAL", "local_level REAL", "segment_level REAL"):
         try:
             conn.execute(f"ALTER TABLE photos ADD COLUMN {col}")
         except Exception:
@@ -78,6 +78,14 @@ def save_local_prediction(conn: sqlite3.Connection, spypoint_id: str, local_leve
     conn.commit()
 
 
+def save_segment_prediction(conn: sqlite3.Connection, spypoint_id: str, segment_level: Optional[float]) -> None:
+    conn.execute(
+        "UPDATE photos SET segment_level = ? WHERE spypoint_id = ?",
+        (segment_level, spypoint_id),
+    )
+    conn.commit()
+
+
 def save_correction(conn: sqlite3.Connection, spypoint_id: str, corrected_level: Optional[float]) -> None:
     conn.execute(
         "UPDATE photos SET corrected_level = ? WHERE spypoint_id = ?",
@@ -88,7 +96,7 @@ def save_correction(conn: sqlite3.Connection, spypoint_id: str, corrected_level:
 
 def get_all_photos(conn: sqlite3.Connection) -> list[sqlite3.Row]:
     return conn.execute(
-        "SELECT * FROM photos ORDER BY taken_at DESC"
+        "SELECT * FROM photos ORDER BY taken_at ASC"
     ).fetchall()
 
 

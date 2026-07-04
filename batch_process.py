@@ -19,7 +19,8 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from src.config import settings
-from src.db import init_db, photo_exists, insert_photo, get_few_shot_examples, save_local_prediction
+from src.db import (init_db, photo_exists, insert_photo, get_few_shot_examples,
+                    save_local_prediction, save_segment_prediction)
 from src.gauge import read_gauge, FewShotExample
 from src.spypoint import SpypointClient, SpypointError
 
@@ -35,7 +36,18 @@ def main():
                         help="Skip SpyPoint — just process images already in the photos/ folder")
     parser.add_argument("--local-model", action="store_true",
                         help="Use the locally-trained model instead of Claude")
+    parser.add_argument("--segment-model", action="store_true",
+                        help="Use the segmentation pipeline instead of Claude (stacks with --local-model)")
     args = parser.parse_args()
+
+    seg_config = seg_calib = None
+    if args.segment_model:
+        from src.segmentation_gauge import read_segment, load_config, load_calibration
+        try:
+            seg_config, seg_calib = load_config(), load_calibration()
+        except FileNotFoundError as e:
+            print(e, file=sys.stderr)
+            sys.exit(1)
 
     PHOTOS_DIR.mkdir(exist_ok=True)
     conn = init_db(settings.db_path)
@@ -115,21 +127,28 @@ def main():
 
         taken_at_str = taken_at.isoformat() if hasattr(taken_at, "isoformat") else (taken_at or "")
 
-        if args.local_model:
-            # Store local model prediction separately — never touches Sonnet's level column
-            try:
-                from src.local_model import predict as _predict
-                local_level = _predict(str(local_path))
-                print(f"{prefix}  → local_level={local_level}")
-            except Exception as e:
-                print(f"{prefix}  — local model failed: {e}")
-                local_level = None
-            # Ensure the row exists before updating it
-            insert_photo(conn, spypoint_id=spypoint_id, taken_at=taken_at_str,
-                         image_url=image_url, local_path=str(local_path),
-                         level=None, confidence="", notes="", raw_json="",
-                         processed_at=datetime.now(timezone.utc).isoformat())
-            save_local_prediction(conn, spypoint_id, local_level)
+        if args.local_model or args.segment_model:
+            # Model predictions live in their own columns — never touch Sonnet's
+            # level column, and only create the row if it doesn't exist yet.
+            if not photo_exists(conn, spypoint_id):
+                insert_photo(conn, spypoint_id=spypoint_id, taken_at=taken_at_str,
+                             image_url=image_url, local_path=str(local_path),
+                             level=None, confidence="", notes="", raw_json="",
+                             processed_at=datetime.now(timezone.utc).isoformat())
+            if args.local_model:
+                try:
+                    from src.local_model import predict as _predict
+                    local_level = _predict(str(local_path))
+                    print(f"{prefix}  → local_level={local_level}")
+                except Exception as e:
+                    print(f"{prefix}  — local model failed: {e}")
+                    local_level = None
+                save_local_prediction(conn, spypoint_id, local_level)
+            if args.segment_model:
+                reading = read_segment(str(local_path), seg_config, seg_calib)
+                note = f"  [{reading.notes}]" if reading.notes else ""
+                print(f"{prefix}  → segment_level={reading.level} ({reading.method}){note}")
+                save_segment_prediction(conn, spypoint_id, reading.level)
         else:
             # Claude / Sonnet path
             try:
@@ -157,7 +176,8 @@ def main():
             )
 
         done += 1
-        time.sleep(0.5)
+        if not (args.local_model or args.segment_model):
+            time.sleep(0.5)  # rate-limit courtesy only needed for the Claude API
 
     print(f"\nDone. processed={done}  skipped={skipped}  failed={failed}")
     print(f"Database: {settings.db_path}")

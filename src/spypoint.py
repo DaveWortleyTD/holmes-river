@@ -1,5 +1,6 @@
+import struct
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 import httpx
@@ -128,10 +129,27 @@ def _parse_photo(data: dict) -> Photo:
     large = data.get("large") or {}
     url = f"https://{large['host']}/{large['path']}" if large.get("host") else ""
 
-    raw_date = data.get("date") or data.get("createdAt") or data.get("takenAt") or ""
-    try:
-        taken_at = datetime.fromisoformat(raw_date.replace("Z", "+00:00"))
-    except (ValueError, AttributeError):
-        taken_at = datetime.utcnow()
+    photo_id = data["id"]
 
-    return Photo(id=data["id"], taken_at=taken_at, url=url)
+    # Primary: decode from MongoDB ObjectID (first 4 bytes = Unix timestamp UTC).
+    # This is more reliable than the API-provided date field.
+    taken_at = _timestamp_from_object_id(photo_id)
+
+    # Fallback: use the API-provided date if ObjectID decoding failed
+    if taken_at is None:
+        raw_date = data.get("date") or data.get("createdAt") or data.get("takenAt") or ""
+        try:
+            taken_at = datetime.fromisoformat(raw_date.replace("Z", "+00:00"))
+        except (ValueError, AttributeError):
+            taken_at = datetime.now(timezone.utc)
+
+    return Photo(id=photo_id, taken_at=taken_at, url=url)
+
+
+def _timestamp_from_object_id(photo_id: str) -> datetime | None:
+    """Decode a UTC datetime from the first 4 bytes of a MongoDB ObjectID."""
+    try:
+        unix_ts = struct.unpack(">I", bytes.fromhex(photo_id[:8]))[0]
+        return datetime.fromtimestamp(unix_ts, tz=timezone.utc)
+    except Exception:
+        return None

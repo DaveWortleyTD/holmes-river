@@ -7,3 +7,5 @@ pydantic-settings
 python-dotenv
 torch
 torchvision
+transformers>=4.37
+opencv-python-headless>=4.9
