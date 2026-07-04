@@ -45,6 +45,6 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add readings.db data.json
+          git add readings.db data.json current.json
           git diff --cached --quiet || git commit -m "Auto: gauge reading $(date -u +%Y-%m-%dT%H:%M)Z"
           git push

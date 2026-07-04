@@ -39,6 +39,16 @@ def main() -> None:
     out.write_text(json.dumps(data, separators=(",", ":")))
     print(f"Exported {len(data)} readings → {out}")
 
+    if data:
+        from datetime import datetime, timezone
+        current = {
+            "ts": data[-1]["ts"],
+            "level": data[-1]["level"],
+            "updated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        }
+        Path("current.json").write_text(json.dumps(current))
+        print(f"Current reading → current.json  ({current['level']} m)")
+
 
 if __name__ == "__main__":
     main()
