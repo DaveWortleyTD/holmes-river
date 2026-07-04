@@ -45,11 +45,23 @@
     .ranges button:hover { background: #334155; color: #e2e8f0; }
     .ranges button.active { background: #10b981; color: #fff; border-color: #10b981; }
 
-    /* Chart */
+    /* Charts */
+    #rain-container {
+      position: relative;
+      height: 90px;
+      margin-top: 12px;
+    }
+    #rain-label {
+      font-size: 0.7rem;
+      color: #475569;
+      margin-top: 16px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
     #chart-container {
       position: relative;
       height: 320px;
-      margin-top: 12px;
+      margin-top: 4px;
     }
 
     /* Add observation */
@@ -187,6 +199,8 @@
     <button data-hours="24">24 hours</button>
   </div>
 
+  <div id="rain-label">Daily rainfall (mm) — McBride CMOS station</div>
+  <div id="rain-container"><canvas id="rain-chart"></canvas></div>
   <div id="chart-container"><canvas id="chart"></canvas></div>
 
   <!-- Add observation -->
@@ -310,34 +324,26 @@
       toggle.textContent = '+ Add visual observation';
     };
 
-    // ── Chart ────────────────────────────────────────────────────────────────
-    let allData = [], chart, activeHours = null;
-
-    function filtered(hours) {
-      if (!hours) return allData;
-      const cutoff = DateTime.now().minus({ hours });
-      return allData.filter(d => DateTime.fromISO(d.ts) >= cutoff);
-    }
-
-    function filteredObs(hours) {
-      const obs = obsChartData();
-      if (!hours) return obs;
-      const cutoff = DateTime.now().minus({ hours });
-      return obs.filter(d => DateTime.fromISO(d.ts) >= cutoff);
-    }
+    // ── Charts ───────────────────────────────────────────────────────────────
+    let chart, rainChart, activeHours = null;
 
     function setRange(hours, btn) {
       activeHours = hours;
       document.querySelectorAll('.ranges button').forEach(b => b.classList.remove('active'));
       if (btn) btn.classList.add('active');
-      chart.data.datasets[0].data = filtered(hours).map(d => ({ x: d.ts, y: d.level }));
-      chart.data.datasets[1].data = filteredObs(hours);
-      chart.update('none');
+      const max = DateTime.now();
+      const min = max.minus({ hours });
+      [chart, rainChart].forEach(c => {
+        if (!c) return;
+        c.options.scales.x.min = min.toISO();
+        c.options.scales.x.max = max.toISO();
+        c.update('none');
+      });
     }
 
     function refreshObsDataset() {
       if (!chart) return;
-      chart.data.datasets[1].data = filteredObs(activeHours);
+      chart.data.datasets[1].data = obsChartData();
       chart.update();
     }
 
@@ -345,15 +351,16 @@
       btn.onclick = () => setRange(parseInt(btn.dataset.hours), btn);
     });
 
-    fetch('data.json')
-      .then(r => { if (!r.ok) throw new Error(r.statusText); return r.json(); })
-      .then(data => {
+    Promise.all([
+      fetch('data.json').then(r => { if (!r.ok) throw new Error(r.statusText); return r.json(); }),
+      fetch('rain.json').then(r => r.ok ? r.json() : []).catch(() => [])
+    ])
+      .then(([data, rain]) => {
         if (!data.length) {
           document.getElementById('updated').textContent = 'No readings yet.';
           return;
         }
 
-        allData = data;
         const last = data[data.length - 1];
         document.getElementById('current-level').innerHTML = `${last.level.toFixed(1)}<span>level</span>`;
 
@@ -404,7 +411,8 @@
                 min: 0,
                 title: { display: true, text: 'Level', color: '#64748b' },
                 grid: { color: '#1e293b' },
-                ticks: { color: '#64748b' }
+                ticks: { color: '#64748b' },
+                afterFit: s => { s.width = 52; }
               }
             },
             plugins: {
@@ -423,6 +431,53 @@
                     const prefix = ctx.dataset.label === 'Observation' ? ' ★ ' : ' ';
                     return `${prefix}${ctx.parsed.y.toFixed(1)}`;
                   }
+                }
+              }
+            }
+          }
+        });
+
+        // Rainfall panel: daily bars sharing the river chart's time axis.
+        // Each day's total is plotted at local noon so the bar sits mid-day.
+        rainChart = new Chart(document.getElementById('rain-chart'), {
+          type: 'bar',
+          data: {
+            datasets: [{
+              label: 'Rain',
+              data: rain.map(d => ({ x: d.date + 'T12:00:00', y: d.mm })),
+              backgroundColor: 'rgba(59,130,246,0.65)',
+              borderRadius: 3,
+              maxBarThickness: 24,
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+              x: {
+                type: 'time',
+                grid: { color: '#1e293b' },
+                ticks: { display: false }
+              },
+              y: {
+                min: 0,
+                title: { display: true, text: 'mm', color: '#64748b' },
+                grid: { color: '#1e293b' },
+                ticks: { color: '#64748b', maxTicksLimit: 3 },
+                afterFit: s => { s.width = 52; }
+              }
+            },
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                backgroundColor: '#1e293b',
+                borderColor: '#334155',
+                borderWidth: 1,
+                titleColor: '#94a3b8',
+                bodyColor: '#e2e8f0',
+                callbacks: {
+                  title: items => DateTime.fromMillis(items[0].parsed.x).toFormat('d MMM'),
+                  label: ctx => ` ${ctx.parsed.y.toFixed(1)} mm`
                 }
               }
             }

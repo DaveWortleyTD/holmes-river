@@ -40,6 +40,9 @@ jobs:
       - name: Fetch new photos and run segmentation
         run: python fetch_and_read.py
 
+      - name: Fetch rainfall data
+        run: python fetch_rain.py
+
       - name: Export data.json
         run: python export_data.py
 
@@ -47,6 +50,6 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add readings.db data.json current.json
+          git add readings.db data.json current.json rain.json
           git diff --cached --quiet || git commit -m "Auto: gauge reading $(date -u +%Y-%m-%dT%H:%M)Z"
           git push
