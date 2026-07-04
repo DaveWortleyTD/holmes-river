@@ -27,9 +27,27 @@
     #chart-container {
       position: relative;
       height: 320px;
-      margin-top: 24px;
+      margin-top: 12px;
     }
     #error { color: #f87171; font-size: 0.9rem; display: none; }
+    .ranges {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-top: 20px;
+    }
+    .ranges button {
+      background: #1e293b;
+      color: #94a3b8;
+      border: 1px solid #334155;
+      border-radius: 6px;
+      padding: 4px 12px;
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+    }
+    .ranges button:hover { background: #334155; color: #e2e8f0; }
+    .ranges button.active { background: #10b981; color: #fff; border-color: #10b981; }
   </style>
 </head>
 <body>
@@ -39,6 +57,14 @@
     <div id="updated">Loading…</div>
   </header>
   <div id="error"></div>
+  <div class="ranges">
+    <button data-hours="4320">6 months</button>
+    <button data-hours="2160">3 months</button>
+    <button data-hours="720">1 month</button>
+    <button data-hours="168">1 week</button>
+    <button data-hours="48">2 days</button>
+    <button data-hours="24">24 hours</button>
+  </div>
   <div id="chart-container"><canvas id="chart"></canvas></div>
 
   <script src="https://cdn.jsdelivr.net/npm/luxon@3/build/global/luxon.min.js"></script>
@@ -46,6 +72,28 @@
   <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon@1/dist/chartjs-adapter-luxon.umd.min.js"></script>
   <script>
     const { DateTime } = luxon;
+
+    let allData = [], chart, activeHours = null;
+
+    function filtered(hours) {
+      if (!hours) return allData;
+      const cutoff = DateTime.now().minus({ hours });
+      return allData.filter(d => DateTime.fromISO(d.ts) >= cutoff);
+    }
+
+    function setRange(hours, btn) {
+      activeHours = hours;
+      document.querySelectorAll('.ranges button').forEach(b => b.classList.remove('active'));
+      if (btn) btn.classList.add('active');
+      chart.data.datasets[0].data = filtered(hours).map(d => ({ x: d.ts, y: d.level }));
+      chart.options.scales.x.min = undefined;
+      chart.options.scales.x.max = undefined;
+      chart.update('none');
+    }
+
+    document.querySelectorAll('.ranges button').forEach(btn => {
+      btn.onclick = () => setRange(parseInt(btn.dataset.hours), btn);
+    });
 
     fetch('data.json')
       .then(r => { if (!r.ok) throw new Error(r.statusText); return r.json(); })
@@ -55,6 +103,7 @@
           return;
         }
 
+        allData = data;
         const last = data[data.length - 1];
         const levelEl = document.getElementById('current-level');
         levelEl.innerHTML = `${last.level.toFixed(1)}<span>m</span>`;
@@ -63,7 +112,7 @@
         document.getElementById('updated').textContent =
           'Last reading ' + lastDt.toRelative() + ' (' + lastDt.toLocal().toFormat('d MMM HH:mm') + ')';
 
-        new Chart(document.getElementById('chart'), {
+        chart = new Chart(document.getElementById('chart'), {
           type: 'line',
           data: {
             datasets: [{
