@@ -338,7 +338,7 @@
     function refreshObsDataset() {
       if (!chart) return;
       chart.data.datasets[1].data = filteredObs(activeHours);
-      chart.update('none');
+      chart.update();
     }
 
     document.querySelectorAll('.ranges button').forEach(btn => {
@@ -378,13 +378,14 @@
               },
               {
                 label: 'Observation',
+                type: 'scatter',
                 data: obsChartData(),
-                borderColor: 'transparent',
+                borderColor: '#f59e0b',
                 backgroundColor: '#f59e0b',
-                pointRadius: 7,
-                pointHoverRadius: 9,
+                borderWidth: 2,
+                pointRadius: 8,
+                pointHoverRadius: 10,
                 pointStyle: 'star',
-                showLine: false,
               }
             ]
           },
