@@ -5,232 +5,300 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Holmes River Gauge</title>
   <style>
+    /*
+      Palette and component styles lifted from the bcwhitewater Bootstrap
+      theme (app/assets/stylesheets/theme.scss): primary #335EEA, success
+      #42BA96, dark text #161C2D, muted #869AB8, card border-radius 0.375rem,
+      subtle box-shadow 0 1px 2px rgba(22,28,45,.075). The theme's licensed
+      HKGroteskPro webfont isn't bundled here — falls back to the system
+      sans-serif stack instead.
+    */
+    :root {
+      --primary: #335EEA;
+      --primary-dark: #1746e0;
+      --success: #42BA96;
+      --info: #7C69EF;
+      --warning: #FAD776;
+      --danger: #DF4759;
+      --orange: #FD7E14;
+      --dark: #161C2D;
+      --muted: #869AB8;
+      --border: #F1F4F8;
+      --light: #F9FBFD;
+      --white: #FFFFFF;
+    }
     *, *::before, *::after { box-sizing: border-box; }
     body {
-      background: #0f172a;
-      color: #e2e8f0;
-      font-family: system-ui, -apple-system, sans-serif;
+      background: var(--light);
+      color: var(--dark);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      font-size: 1.0625rem;
+      line-height: 1.6;
       margin: 0;
-      padding: 20px;
       min-height: 100vh;
     }
-    header { margin-bottom: 20px; }
-    h1 { font-size: 1rem; color: #64748b; margin: 0 0 8px; letter-spacing: 0.05em; text-transform: uppercase; }
-    #current-level {
-      font-size: 3rem;
-      font-weight: 700;
-      color: #10b981;
-      line-height: 1;
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 32px 20px 60px;
     }
-    #current-level span { font-size: 1.2rem; color: #94a3b8; font-weight: 400; margin-left: 4px; }
-    #updated { font-size: 0.8rem; color: #475569; margin-top: 6px; }
+    header {
+      padding-bottom: 20px;
+      margin-bottom: 24px;
+      border-bottom: 1px solid var(--border);
+    }
+    h1 {
+      font-size: 0.9rem;
+      color: var(--muted);
+      margin: 0 0 10px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      font-weight: 600;
+    }
+    #current-level {
+      font-size: 2.6875rem;
+      font-weight: 400;
+      letter-spacing: -0.02em;
+      line-height: 1.2;
+      color: var(--success);
+    }
+    #current-level span { font-size: 1.1rem; color: var(--muted); font-weight: 400; margin-left: 6px; }
+    #updated { font-size: 0.85rem; color: var(--muted); margin-top: 6px; }
+
+    /* Card */
+    .card {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: 0.375rem;
+      box-shadow: 0 1px 2px rgba(22, 28, 45, 0.075);
+      padding: 1.75rem;
+    }
 
     /* Range buttons */
     .ranges {
       display: flex;
-      gap: 6px;
+      gap: 8px;
       flex-wrap: wrap;
-      margin-top: 20px;
+      margin-bottom: 18px;
     }
     .ranges button {
-      background: #1e293b;
-      color: #94a3b8;
-      border: 1px solid #334155;
-      border-radius: 6px;
-      padding: 4px 12px;
-      font-size: 0.8rem;
+      background: var(--light);
+      color: var(--dark);
+      border: 1px solid var(--border);
+      border-radius: 0.375rem;
+      padding: 6px 14px;
+      font-size: 0.8125rem;
+      font-weight: 600;
       cursor: pointer;
-      transition: background 0.15s, color 0.15s;
+      transition: color 0.15s ease-in-out, background-color 0.15s ease-in-out, border-color 0.15s ease-in-out;
     }
-    .ranges button:hover { background: #334155; color: #e2e8f0; }
-    .ranges button.active { background: #10b981; color: #fff; border-color: #10b981; }
+    .ranges button:hover { background: var(--border); }
+    .ranges button.active { background: var(--primary); color: var(--white); border-color: var(--primary); }
 
     /* Chart */
     #chart-container {
       position: relative;
       height: 360px;
-      margin-top: 12px;
     }
 
     /* Add observation */
     #obs-toggle {
       margin-top: 24px;
       background: none;
-      border: 1px dashed #334155;
-      color: #64748b;
-      border-radius: 8px;
-      padding: 6px 16px;
-      font-size: 0.85rem;
+      border: 1px dashed #CBD5E1;
+      color: var(--muted);
+      border-radius: 0.375rem;
+      padding: 8px 16px;
+      font-size: 0.875rem;
+      font-weight: 600;
       cursor: pointer;
       width: 100%;
       text-align: left;
-      transition: border-color 0.15s, color 0.15s;
+      transition: border-color 0.15s ease-in-out, color 0.15s ease-in-out;
     }
-    #obs-toggle:hover { border-color: #10b981; color: #10b981; }
+    #obs-toggle:hover { border-color: var(--primary); color: var(--primary); }
 
     #obs-form-wrap {
       display: none;
-      background: #1e293b;
-      border: 1px solid #334155;
-      border-radius: 10px;
-      padding: 18px;
+      background: var(--light);
+      border: 1px solid var(--border);
+      border-radius: 0.375rem;
+      padding: 20px;
       margin-top: 10px;
     }
     #obs-form-wrap.open { display: block; }
 
     #obs-form-wrap h2 {
-      font-size: 0.85rem;
-      color: #94a3b8;
+      font-size: 0.8125rem;
+      color: var(--muted);
       margin: 0 0 14px;
       text-transform: uppercase;
-      letter-spacing: 0.05em;
+      letter-spacing: 0.04em;
+      font-weight: 600;
     }
 
     .form-row {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 10px;
-      margin-bottom: 10px;
+      gap: 12px;
+      margin-bottom: 12px;
     }
     @media (max-width: 500px) { .form-row { grid-template-columns: 1fr; } }
 
-    .form-field { display: flex; flex-direction: column; gap: 4px; }
+    .form-field { display: flex; flex-direction: column; gap: 5px; }
     .form-field.full { grid-column: 1 / -1; }
-    .form-field label { font-size: 0.75rem; color: #64748b; }
+    .form-field label { font-size: 0.75rem; color: var(--muted); font-weight: 600; }
     .form-field input,
     .form-field textarea {
-      background: #0f172a;
-      border: 1px solid #334155;
-      border-radius: 6px;
-      color: #e2e8f0;
+      background: var(--white);
+      border: 1px solid #CBD5E1;
+      border-radius: 0.375rem;
+      color: var(--dark);
       font-size: 0.9rem;
-      padding: 7px 10px;
+      padding: 8px 10px;
       font-family: inherit;
     }
     .form-field input:focus,
     .form-field textarea:focus {
       outline: none;
-      border-color: #10b981;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(51, 94, 234, 0.15);
     }
     .form-field textarea { resize: vertical; min-height: 60px; }
 
     #obs-submit {
-      background: #10b981;
-      color: #fff;
-      border: none;
-      border-radius: 6px;
-      padding: 8px 20px;
+      background: var(--primary);
+      color: var(--white);
+      border: 1px solid var(--primary);
+      border-radius: 0.375rem;
+      padding: 9px 22px;
       font-size: 0.9rem;
+      font-weight: 600;
       cursor: pointer;
       margin-top: 6px;
+      transition: background-color 0.15s ease-in-out;
     }
-    #obs-submit:hover { background: #059669; }
+    #obs-submit:hover { background: var(--primary-dark); border-color: var(--primary-dark); }
 
     /* Observations list */
     #obs-list { margin-top: 24px; }
     #obs-list h2 {
-      font-size: 0.85rem;
-      color: #64748b;
+      font-size: 0.8125rem;
+      color: var(--muted);
       text-transform: uppercase;
-      letter-spacing: 0.05em;
+      letter-spacing: 0.04em;
+      font-weight: 600;
       margin: 0 0 10px;
     }
     #obs-table {
       width: 100%;
       border-collapse: collapse;
-      font-size: 0.82rem;
+      font-size: 0.85rem;
     }
     #obs-table th {
       text-align: left;
-      color: #64748b;
-      font-weight: 500;
-      padding: 0 8px 6px;
-      border-bottom: 1px solid #1e293b;
+      color: var(--muted);
+      font-weight: 600;
+      padding: 0 8px 8px;
+      border-bottom: 1px solid var(--border);
     }
     #obs-table td {
-      padding: 8px;
-      border-bottom: 1px solid #1e293b;
-      color: #cbd5e1;
+      padding: 10px 8px;
+      border-bottom: 1px solid var(--border);
+      color: var(--dark);
       vertical-align: top;
     }
-    #obs-table td.level { color: #f59e0b; font-weight: 600; }
-    #obs-table td.note { color: #94a3b8; font-style: italic; }
+    #obs-table td.level { color: var(--orange); font-weight: 600; }
+    #obs-table td.note { color: var(--muted); font-style: italic; }
     .del-btn {
       background: none;
       border: none;
-      color: #475569;
+      color: var(--muted);
       cursor: pointer;
-      font-size: 1rem;
+      font-size: 1.1rem;
       padding: 0;
       line-height: 1;
     }
-    .del-btn:hover { color: #f87171; }
+    .del-btn:hover { color: var(--danger); }
 
-    #error { color: #f87171; font-size: 0.9rem; display: none; margin-top: 8px; }
+    #error {
+      color: var(--danger);
+      font-size: 0.9rem;
+      display: none;
+      margin-bottom: 12px;
+      padding: 10px 14px;
+      background: rgba(223, 71, 89, 0.08);
+      border: 1px solid rgba(223, 71, 89, 0.25);
+      border-radius: 0.375rem;
+    }
   </style>
 </head>
 <body>
-  <header>
-    <h1>Holmes River</h1>
-    <div id="current-level">—<span>m</span></div>
-    <div id="updated">Loading…</div>
-  </header>
+  <div class="container">
+    <header>
+      <h1>Holmes River</h1>
+      <div id="current-level">—<span>level</span></div>
+      <div id="updated">Loading…</div>
+    </header>
 
-  <div id="error"></div>
+    <div id="error"></div>
 
-  <div class="ranges">
-    <button data-hours="4320">6 months</button>
-    <button data-hours="2160">3 months</button>
-    <button data-hours="720">1 month</button>
-    <button data-hours="168">1 week</button>
-    <button data-hours="48">2 days</button>
-    <button data-hours="24">24 hours</button>
-  </div>
-
-  <div id="chart-container"><canvas id="chart"></canvas></div>
-
-  <!-- Add observation -->
-  <button id="obs-toggle">+ Add visual observation</button>
-  <div id="obs-form-wrap">
-    <h2>Visual Observation</h2>
-    <div class="form-row">
-      <div class="form-field">
-        <label for="f-name">Your name</label>
-        <input id="f-name" type="text" placeholder="e.g. Dave">
+    <div class="card">
+      <div class="ranges">
+        <button data-hours="4320">6 months</button>
+        <button data-hours="2160">3 months</button>
+        <button data-hours="720">1 month</button>
+        <button data-hours="168">1 week</button>
+        <button data-hours="48">2 days</button>
+        <button data-hours="24">24 hours</button>
       </div>
-      <div class="form-field">
-        <label for="f-dt">Date &amp; time</label>
-        <input id="f-dt" type="datetime-local">
-      </div>
+
+      <div id="chart-container"><canvas id="chart"></canvas></div>
     </div>
-    <div class="form-row">
-      <div class="form-field">
-        <label for="f-level">Gauge level (m)</label>
-        <input id="f-level" type="number" step="0.1" min="0" max="20" placeholder="e.g. 4.5">
-      </div>
-      <div class="form-field full">
-        <label for="f-note">Note</label>
-        <textarea id="f-note" placeholder="e.g. Clear water, debris visible upstream"></textarea>
-      </div>
-    </div>
-    <button id="obs-submit">Save observation</button>
-  </div>
 
-  <!-- Observations list -->
-  <div id="obs-list" style="display:none">
-    <h2>Observations</h2>
-    <table id="obs-table">
-      <thead>
-        <tr>
-          <th>Date/time</th>
-          <th>Name</th>
-          <th>Level</th>
-          <th>Note</th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody id="obs-tbody"></tbody>
-    </table>
+    <!-- Add observation -->
+    <button id="obs-toggle">+ Add visual observation</button>
+    <div id="obs-form-wrap">
+      <h2>Visual Observation</h2>
+      <div class="form-row">
+        <div class="form-field">
+          <label for="f-name">Your name</label>
+          <input id="f-name" type="text" placeholder="e.g. Dave">
+        </div>
+        <div class="form-field">
+          <label for="f-dt">Date &amp; time</label>
+          <input id="f-dt" type="datetime-local">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-field">
+          <label for="f-level">Gauge level (m)</label>
+          <input id="f-level" type="number" step="0.1" min="0" max="20" placeholder="e.g. 4.5">
+        </div>
+        <div class="form-field full">
+          <label for="f-note">Note</label>
+          <textarea id="f-note" placeholder="e.g. Clear water, debris visible upstream"></textarea>
+        </div>
+      </div>
+      <button id="obs-submit">Save observation</button>
+    </div>
+
+    <!-- Observations list -->
+    <div id="obs-list" style="display:none">
+      <h2>Observations</h2>
+      <table id="obs-table">
+        <thead>
+          <tr>
+            <th>Date/time</th>
+            <th>Name</th>
+            <th>Level</th>
+            <th>Note</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="obs-tbody"></tbody>
+      </table>
+    </div>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/luxon@3/build/global/luxon.min.js"></script>
@@ -360,8 +428,8 @@
               {
                 label: 'Auto reading',
                 data: data.map(d => ({ x: d.ts, y: d.level })),
-                borderColor: '#10b981',
-                backgroundColor: 'rgba(16,185,129,0.08)',
+                borderColor: '#42BA96',
+                backgroundColor: 'rgba(66,186,150,0.08)',
                 borderWidth: 2,
                 pointRadius: 2,
                 pointHoverRadius: 5,
@@ -372,8 +440,8 @@
                 label: 'Observation',
                 type: 'scatter',
                 data: obsChartData(),
-                borderColor: '#f59e0b',
-                backgroundColor: '#f59e0b',
+                borderColor: '#FD7E14',
+                backgroundColor: '#FD7E14',
                 borderWidth: 2,
                 pointRadius: 8,
                 pointHoverRadius: 10,
@@ -385,7 +453,7 @@
                 yAxisID: 'yRain',
                 // Daily totals plotted at local noon so each bar sits mid-day
                 data: rain.map(d => ({ x: d.date + 'T12:00:00', y: d.mm })),
-                backgroundColor: 'rgba(59,130,246,0.55)',
+                backgroundColor: 'rgba(51,94,234,0.45)',
                 borderRadius: 3,
                 maxBarThickness: 24,
               }
@@ -402,36 +470,36 @@
                   tooltipFormat: 'd MMM HH:mm',
                   displayFormats: { hour: 'ccc HH:mm', day: 'd MMM', week: 'd MMM' }
                 },
-                grid: { color: '#1e293b' },
-                ticks: { color: '#64748b', maxRotation: 0 }
+                grid: { color: '#F1F4F8' },
+                ticks: { color: '#869AB8', maxRotation: 0 }
               },
               y: {
                 min: 0,
-                title: { display: true, text: 'Level', color: '#64748b' },
-                grid: { color: '#1e293b' },
-                ticks: { color: '#64748b' }
+                title: { display: true, text: 'Level', color: '#869AB8' },
+                grid: { color: '#F1F4F8' },
+                ticks: { color: '#869AB8' }
               },
               yRain: {
                 position: 'right',
                 min: 0,
                 // Keep rain bars in the lower part of the plot, under the river line
                 suggestedMax: Math.max(...rain.map(d => d.mm), 1) * 2.5,
-                title: { display: true, text: 'Rain (mm)', color: '#3b82f6' },
+                title: { display: true, text: 'Rain (mm)', color: '#335EEA' },
                 grid: { display: false },
-                ticks: { color: '#3b82f6', maxTicksLimit: 5 }
+                ticks: { color: '#335EEA', maxTicksLimit: 5 }
               }
             },
             plugins: {
               legend: {
                 display: true,
-                labels: { color: '#64748b', boxWidth: 12, font: { size: 11 } }
+                labels: { color: '#161C2D', boxWidth: 12, font: { size: 11, weight: '600' } }
               },
               tooltip: {
-                backgroundColor: '#1e293b',
-                borderColor: '#334155',
+                backgroundColor: '#1B2A4E',
+                borderColor: '#1B2A4E',
                 borderWidth: 1,
-                titleColor: '#94a3b8',
-                bodyColor: '#e2e8f0',
+                titleColor: '#F9FBFD',
+                bodyColor: '#F9FBFD',
                 callbacks: {
                   label: ctx => {
                     if (ctx.dataset.label === 'Rainfall (mm)') return ` ${ctx.parsed.y.toFixed(1)} mm`;
