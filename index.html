@@ -45,23 +45,11 @@
     .ranges button:hover { background: #334155; color: #e2e8f0; }
     .ranges button.active { background: #10b981; color: #fff; border-color: #10b981; }
 
-    /* Charts */
-    #rain-container {
-      position: relative;
-      height: 90px;
-      margin-top: 12px;
-    }
-    #rain-label {
-      font-size: 0.7rem;
-      color: #475569;
-      margin-top: 16px;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-    }
+    /* Chart */
     #chart-container {
       position: relative;
-      height: 320px;
-      margin-top: 4px;
+      height: 360px;
+      margin-top: 12px;
     }
 
     /* Add observation */
@@ -199,8 +187,6 @@
     <button data-hours="24">24 hours</button>
   </div>
 
-  <div id="rain-label">Daily rainfall (mm) — McBride CMOS station</div>
-  <div id="rain-container"><canvas id="rain-chart"></canvas></div>
   <div id="chart-container"><canvas id="chart"></canvas></div>
 
   <!-- Add observation -->
@@ -324,8 +310,8 @@
       toggle.textContent = '+ Add visual observation';
     };
 
-    // ── Charts ───────────────────────────────────────────────────────────────
-    let chart, rainChart, activeHours = null;
+    // ── Chart ────────────────────────────────────────────────────────────────
+    let chart, activeHours = null;
 
     function setRange(hours, btn) {
       activeHours = hours;
@@ -333,12 +319,11 @@
       if (btn) btn.classList.add('active');
       const max = DateTime.now();
       const min = max.minus({ hours });
-      [chart, rainChart].forEach(c => {
-        if (!c) return;
-        c.options.scales.x.min = min.toISO();
-        c.options.scales.x.max = max.toISO();
-        c.update('none');
-      });
+      chart.options.scales.x.min = min.toISO();
+      chart.options.scales.x.max = max.toISO();
+      // Explicit tick unit so labels always show dates (auto-picks hours otherwise)
+      chart.options.scales.x.time.unit = hours <= 48 ? 'hour' : hours <= 720 ? 'day' : 'week';
+      chart.update('none');
     }
 
     function refreshObsDataset() {
@@ -393,17 +378,30 @@
                 pointRadius: 8,
                 pointHoverRadius: 10,
                 pointStyle: 'star',
+              },
+              {
+                label: 'Rainfall (mm)',
+                type: 'bar',
+                yAxisID: 'yRain',
+                // Daily totals plotted at local noon so each bar sits mid-day
+                data: rain.map(d => ({ x: d.date + 'T12:00:00', y: d.mm })),
+                backgroundColor: 'rgba(59,130,246,0.55)',
+                borderRadius: 3,
+                maxBarThickness: 24,
               }
             ]
           },
           options: {
             responsive: true,
             maintainAspectRatio: false,
-            interaction: { mode: 'index', intersect: false },
+            interaction: { mode: 'nearest', intersect: false },
             scales: {
               x: {
                 type: 'time',
-                time: { tooltipFormat: 'd MMM HH:mm' },
+                time: {
+                  tooltipFormat: 'd MMM HH:mm',
+                  displayFormats: { hour: 'ccc HH:mm', day: 'd MMM', week: 'd MMM' }
+                },
                 grid: { color: '#1e293b' },
                 ticks: { color: '#64748b', maxRotation: 0 }
               },
@@ -411,8 +409,16 @@
                 min: 0,
                 title: { display: true, text: 'Level', color: '#64748b' },
                 grid: { color: '#1e293b' },
-                ticks: { color: '#64748b' },
-                afterFit: s => { s.width = 52; }
+                ticks: { color: '#64748b' }
+              },
+              yRain: {
+                position: 'right',
+                min: 0,
+                // Keep rain bars in the lower part of the plot, under the river line
+                suggestedMax: Math.max(...rain.map(d => d.mm), 1) * 2.5,
+                title: { display: true, text: 'Rain (mm)', color: '#3b82f6' },
+                grid: { display: false },
+                ticks: { color: '#3b82f6', maxTicksLimit: 5 }
               }
             },
             plugins: {
@@ -428,56 +434,10 @@
                 bodyColor: '#e2e8f0',
                 callbacks: {
                   label: ctx => {
+                    if (ctx.dataset.label === 'Rainfall (mm)') return ` ${ctx.parsed.y.toFixed(1)} mm`;
                     const prefix = ctx.dataset.label === 'Observation' ? ' ★ ' : ' ';
                     return `${prefix}${ctx.parsed.y.toFixed(1)}`;
                   }
-                }
-              }
-            }
-          }
-        });
-
-        // Rainfall panel: daily bars sharing the river chart's time axis.
-        // Each day's total is plotted at local noon so the bar sits mid-day.
-        rainChart = new Chart(document.getElementById('rain-chart'), {
-          type: 'bar',
-          data: {
-            datasets: [{
-              label: 'Rain',
-              data: rain.map(d => ({ x: d.date + 'T12:00:00', y: d.mm })),
-              backgroundColor: 'rgba(59,130,246,0.65)',
-              borderRadius: 3,
-              maxBarThickness: 24,
-            }]
-          },
-          options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            scales: {
-              x: {
-                type: 'time',
-                grid: { color: '#1e293b' },
-                ticks: { display: false }
-              },
-              y: {
-                min: 0,
-                title: { display: true, text: 'mm', color: '#64748b' },
-                grid: { color: '#1e293b' },
-                ticks: { color: '#64748b', maxTicksLimit: 3 },
-                afterFit: s => { s.width = 52; }
-              }
-            },
-            plugins: {
-              legend: { display: false },
-              tooltip: {
-                backgroundColor: '#1e293b',
-                borderColor: '#334155',
-                borderWidth: 1,
-                titleColor: '#94a3b8',
-                bodyColor: '#e2e8f0',
-                callbacks: {
-                  title: items => DateTime.fromMillis(items[0].parsed.x).toFormat('d MMM'),
-                  label: ctx => ` ${ctx.parsed.y.toFixed(1)} mm`
                 }
               }
             }
