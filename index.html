@@ -355,7 +355,7 @@
 
         allData = data;
         const last = data[data.length - 1];
-        document.getElementById('current-level').innerHTML = `${last.level.toFixed(1)}<span>m</span>`;
+        document.getElementById('current-level').innerHTML = `${last.level.toFixed(1)}<span>level</span>`;
 
         const lastDt = DateTime.fromISO(last.ts);
         document.getElementById('updated').textContent =
@@ -402,7 +402,7 @@
               },
               y: {
                 min: 0,
-                title: { display: true, text: 'Level (m)', color: '#64748b' },
+                title: { display: true, text: 'Level', color: '#64748b' },
                 grid: { color: '#1e293b' },
                 ticks: { color: '#64748b' }
               }
@@ -421,7 +421,7 @@
                 callbacks: {
                   label: ctx => {
                     const prefix = ctx.dataset.label === 'Observation' ? ' ★ ' : ' ';
-                    return `${prefix}${ctx.parsed.y.toFixed(1)} m`;
+                    return `${prefix}${ctx.parsed.y.toFixed(1)}`;
                   }
                 }
               }
@@ -430,6 +430,10 @@
         });
 
         renderObsList();
+
+        // Default to 1-week view
+        const weekBtn = document.querySelector('.ranges button[data-hours="168"]');
+        setRange(168, weekBtn);
       })
       .catch(err => {
         const el = document.getElementById('error');
