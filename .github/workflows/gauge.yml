@@ -2,9 +2,9 @@ name: Gauge reading
 
 on:
   schedule:
-    - cron: '21 0 * * *'    # 00:21 UTC = 01:21 BST (10 min after 01:11 upload)
-    - cron: '21 8 * * *'    # 08:21 UTC = 09:21 BST (10 min after 09:11 upload)
-    - cron: '21 16 * * *'   # 16:21 UTC = 17:21 BST (10 min after 17:11 upload)
+    - cron: '21 9 * * *'    # 09:21 UTC = 01:21 PST (10 min after 01:11 upload)
+    - cron: '21 17 * * *'   # 17:21 UTC = 09:21 PST (10 min after 09:11 upload)
+    - cron: '21 1 * * *'    # 01:21 UTC = 17:21 PST (10 min after 17:11 upload)
   workflow_dispatch:           # allow manual trigger from Actions tab
 
 permissions:
