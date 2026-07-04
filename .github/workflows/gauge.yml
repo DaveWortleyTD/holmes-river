@@ -12,6 +12,12 @@ jobs:
   read:
     runs-on: ubuntu-latest
 
+    env:
+      SPYPOINT_USERNAME: ${{ secrets.SPYPOINT_USERNAME }}
+      SPYPOINT_PASSWORD: ${{ secrets.SPYPOINT_PASSWORD }}
+      SPYPOINT_CAMERA_ID: ${{ secrets.SPYPOINT_CAMERA_ID }}
+      DB_PATH: ./readings.db
+
     steps:
       - uses: actions/checkout@v4
 
@@ -30,11 +36,6 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Fetch new photos and run segmentation
-        env:
-          SPYPOINT_USERNAME: ${{ secrets.SPYPOINT_USERNAME }}
-          SPYPOINT_PASSWORD: ${{ secrets.SPYPOINT_PASSWORD }}
-          SPYPOINT_CAMERA_ID: ${{ secrets.SPYPOINT_CAMERA_ID }}
-          DB_PATH: ./readings.db
         run: python fetch_and_read.py
 
       - name: Export data.json
