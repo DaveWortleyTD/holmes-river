@@ -24,12 +24,8 @@
     }
     #current-level span { font-size: 1.2rem; color: #94a3b8; font-weight: 400; margin-left: 4px; }
     #updated { font-size: 0.8rem; color: #475569; margin-top: 6px; }
-    #chart-container {
-      position: relative;
-      height: 320px;
-      margin-top: 12px;
-    }
-    #error { color: #f87171; font-size: 0.9rem; display: none; }
+
+    /* Range buttons */
     .ranges {
       display: flex;
       gap: 6px;
@@ -48,6 +44,129 @@
     }
     .ranges button:hover { background: #334155; color: #e2e8f0; }
     .ranges button.active { background: #10b981; color: #fff; border-color: #10b981; }
+
+    /* Chart */
+    #chart-container {
+      position: relative;
+      height: 320px;
+      margin-top: 12px;
+    }
+
+    /* Add observation */
+    #obs-toggle {
+      margin-top: 24px;
+      background: none;
+      border: 1px dashed #334155;
+      color: #64748b;
+      border-radius: 8px;
+      padding: 6px 16px;
+      font-size: 0.85rem;
+      cursor: pointer;
+      width: 100%;
+      text-align: left;
+      transition: border-color 0.15s, color 0.15s;
+    }
+    #obs-toggle:hover { border-color: #10b981; color: #10b981; }
+
+    #obs-form-wrap {
+      display: none;
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 10px;
+      padding: 18px;
+      margin-top: 10px;
+    }
+    #obs-form-wrap.open { display: block; }
+
+    #obs-form-wrap h2 {
+      font-size: 0.85rem;
+      color: #94a3b8;
+      margin: 0 0 14px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    @media (max-width: 500px) { .form-row { grid-template-columns: 1fr; } }
+
+    .form-field { display: flex; flex-direction: column; gap: 4px; }
+    .form-field.full { grid-column: 1 / -1; }
+    .form-field label { font-size: 0.75rem; color: #64748b; }
+    .form-field input,
+    .form-field textarea {
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 6px;
+      color: #e2e8f0;
+      font-size: 0.9rem;
+      padding: 7px 10px;
+      font-family: inherit;
+    }
+    .form-field input:focus,
+    .form-field textarea:focus {
+      outline: none;
+      border-color: #10b981;
+    }
+    .form-field textarea { resize: vertical; min-height: 60px; }
+
+    #obs-submit {
+      background: #10b981;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      padding: 8px 20px;
+      font-size: 0.9rem;
+      cursor: pointer;
+      margin-top: 6px;
+    }
+    #obs-submit:hover { background: #059669; }
+
+    /* Observations list */
+    #obs-list { margin-top: 24px; }
+    #obs-list h2 {
+      font-size: 0.85rem;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin: 0 0 10px;
+    }
+    #obs-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.82rem;
+    }
+    #obs-table th {
+      text-align: left;
+      color: #64748b;
+      font-weight: 500;
+      padding: 0 8px 6px;
+      border-bottom: 1px solid #1e293b;
+    }
+    #obs-table td {
+      padding: 8px;
+      border-bottom: 1px solid #1e293b;
+      color: #cbd5e1;
+      vertical-align: top;
+    }
+    #obs-table td.level { color: #f59e0b; font-weight: 600; }
+    #obs-table td.note { color: #94a3b8; font-style: italic; }
+    .del-btn {
+      background: none;
+      border: none;
+      color: #475569;
+      cursor: pointer;
+      font-size: 1rem;
+      padding: 0;
+      line-height: 1;
+    }
+    .del-btn:hover { color: #f87171; }
+
+    #error { color: #f87171; font-size: 0.9rem; display: none; margin-top: 8px; }
   </style>
 </head>
 <body>
@@ -56,7 +175,9 @@
     <div id="current-level">—<span>m</span></div>
     <div id="updated">Loading…</div>
   </header>
+
   <div id="error"></div>
+
   <div class="ranges">
     <button data-hours="4320">6 months</button>
     <button data-hours="2160">3 months</button>
@@ -65,7 +186,52 @@
     <button data-hours="48">2 days</button>
     <button data-hours="24">24 hours</button>
   </div>
+
   <div id="chart-container"><canvas id="chart"></canvas></div>
+
+  <!-- Add observation -->
+  <button id="obs-toggle">+ Add visual observation</button>
+  <div id="obs-form-wrap">
+    <h2>Visual Observation</h2>
+    <div class="form-row">
+      <div class="form-field">
+        <label for="f-name">Your name</label>
+        <input id="f-name" type="text" placeholder="e.g. Dave">
+      </div>
+      <div class="form-field">
+        <label for="f-dt">Date &amp; time</label>
+        <input id="f-dt" type="datetime-local">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-field">
+        <label for="f-level">Gauge level (m)</label>
+        <input id="f-level" type="number" step="0.1" min="0" max="20" placeholder="e.g. 4.5">
+      </div>
+      <div class="form-field full">
+        <label for="f-note">Note</label>
+        <textarea id="f-note" placeholder="e.g. Clear water, debris visible upstream"></textarea>
+      </div>
+    </div>
+    <button id="obs-submit">Save observation</button>
+  </div>
+
+  <!-- Observations list -->
+  <div id="obs-list" style="display:none">
+    <h2>Observations</h2>
+    <table id="obs-table">
+      <thead>
+        <tr>
+          <th>Date/time</th>
+          <th>Name</th>
+          <th>Level</th>
+          <th>Note</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="obs-tbody"></tbody>
+    </table>
+  </div>
 
   <script src="https://cdn.jsdelivr.net/npm/luxon@3/build/global/luxon.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
@@ -73,6 +239,78 @@
   <script>
     const { DateTime } = luxon;
 
+    // ── Observations (localStorage) ──────────────────────────────────────────
+    const OBS_KEY = 'holmes_observations';
+    function loadObs() { try { return JSON.parse(localStorage.getItem(OBS_KEY) || '[]'); } catch { return []; } }
+    function saveObs(arr) { localStorage.setItem(OBS_KEY, JSON.stringify(arr)); }
+
+    function renderObsList() {
+      const obs = loadObs();
+      const tbody = document.getElementById('obs-tbody');
+      document.getElementById('obs-list').style.display = obs.length ? 'block' : 'none';
+      tbody.innerHTML = '';
+      [...obs].sort((a, b) => b.ts.localeCompare(a.ts)).forEach((o, i) => {
+        const dt = DateTime.fromISO(o.ts).toLocal().toFormat('d MMM yyyy HH:mm');
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${dt}</td>
+          <td>${o.name || '—'}</td>
+          <td class="level">${parseFloat(o.level).toFixed(1)} m</td>
+          <td class="note">${o.note || ''}</td>
+          <td><button class="del-btn" data-id="${o.id}" title="Delete">×</button></td>`;
+        tbody.appendChild(tr);
+      });
+      tbody.querySelectorAll('.del-btn').forEach(btn => {
+        btn.onclick = () => {
+          const arr = loadObs().filter(o => o.id !== btn.dataset.id);
+          saveObs(arr);
+          renderObsList();
+          refreshObsDataset();
+        };
+      });
+    }
+
+    function obsChartData() {
+      return loadObs().map(o => ({ x: o.ts, y: parseFloat(o.level) }));
+    }
+
+    // ── Form toggle ──────────────────────────────────────────────────────────
+    const toggle = document.getElementById('obs-toggle');
+    const formWrap = document.getElementById('obs-form-wrap');
+    toggle.onclick = () => {
+      const open = formWrap.classList.toggle('open');
+      toggle.textContent = open ? '− Close' : '+ Add visual observation';
+      if (open) {
+        // Default datetime to now (local), rounded to nearest minute
+        const now = DateTime.now().startOf('minute').toISO({ includeOffset: false }).slice(0, 16);
+        document.getElementById('f-dt').value = now;
+      }
+    };
+
+    document.getElementById('obs-submit').onclick = () => {
+      const name  = document.getElementById('f-name').value.trim();
+      const dt    = document.getElementById('f-dt').value;
+      const level = document.getElementById('f-level').value;
+      const note  = document.getElementById('f-note').value.trim();
+
+      if (!dt || level === '') { alert('Date/time and level are required.'); return; }
+      const levelNum = parseFloat(level);
+      if (isNaN(levelNum)) { alert('Level must be a number.'); return; }
+
+      const obs = loadObs();
+      obs.push({ id: Date.now().toString(), ts: dt, name, level: levelNum, note });
+      saveObs(obs);
+      renderObsList();
+      refreshObsDataset();
+
+      // Reset form
+      document.getElementById('f-level').value = '';
+      document.getElementById('f-note').value = '';
+      formWrap.classList.remove('open');
+      toggle.textContent = '+ Add visual observation';
+    };
+
+    // ── Chart ────────────────────────────────────────────────────────────────
     let allData = [], chart, activeHours = null;
 
     function filtered(hours) {
@@ -81,13 +319,25 @@
       return allData.filter(d => DateTime.fromISO(d.ts) >= cutoff);
     }
 
+    function filteredObs(hours) {
+      const obs = obsChartData();
+      if (!hours) return obs;
+      const cutoff = DateTime.now().minus({ hours });
+      return obs.filter(d => DateTime.fromISO(d.ts) >= cutoff);
+    }
+
     function setRange(hours, btn) {
       activeHours = hours;
       document.querySelectorAll('.ranges button').forEach(b => b.classList.remove('active'));
       if (btn) btn.classList.add('active');
       chart.data.datasets[0].data = filtered(hours).map(d => ({ x: d.ts, y: d.level }));
-      chart.options.scales.x.min = undefined;
-      chart.options.scales.x.max = undefined;
+      chart.data.datasets[1].data = filteredObs(hours);
+      chart.update('none');
+    }
+
+    function refreshObsDataset() {
+      if (!chart) return;
+      chart.data.datasets[1].data = filteredObs(activeHours);
       chart.update('none');
     }
 
@@ -105,8 +355,7 @@
 
         allData = data;
         const last = data[data.length - 1];
-        const levelEl = document.getElementById('current-level');
-        levelEl.innerHTML = `${last.level.toFixed(1)}<span>m</span>`;
+        document.getElementById('current-level').innerHTML = `${last.level.toFixed(1)}<span>m</span>`;
 
         const lastDt = DateTime.fromISO(last.ts);
         document.getElementById('updated').textContent =
@@ -115,17 +364,29 @@
         chart = new Chart(document.getElementById('chart'), {
           type: 'line',
           data: {
-            datasets: [{
-              label: 'Level (m)',
-              data: data.map(d => ({ x: d.ts, y: d.level })),
-              borderColor: '#10b981',
-              backgroundColor: 'rgba(16,185,129,0.08)',
-              borderWidth: 2,
-              pointRadius: 2,
-              pointHoverRadius: 5,
-              fill: true,
-              tension: 0.2,
-            }]
+            datasets: [
+              {
+                label: 'Auto reading',
+                data: data.map(d => ({ x: d.ts, y: d.level })),
+                borderColor: '#10b981',
+                backgroundColor: 'rgba(16,185,129,0.08)',
+                borderWidth: 2,
+                pointRadius: 2,
+                pointHoverRadius: 5,
+                fill: true,
+                tension: 0.2,
+              },
+              {
+                label: 'Observation',
+                data: obsChartData(),
+                borderColor: 'transparent',
+                backgroundColor: '#f59e0b',
+                pointRadius: 7,
+                pointHoverRadius: 9,
+                pointStyle: 'star',
+                showLine: false,
+              }
+            ]
           },
           options: {
             responsive: true,
@@ -146,18 +407,28 @@
               }
             },
             plugins: {
-              legend: { display: false },
+              legend: {
+                display: true,
+                labels: { color: '#64748b', boxWidth: 12, font: { size: 11 } }
+              },
               tooltip: {
                 backgroundColor: '#1e293b',
                 borderColor: '#334155',
                 borderWidth: 1,
                 titleColor: '#94a3b8',
                 bodyColor: '#e2e8f0',
-                callbacks: { label: ctx => ` ${ctx.parsed.y.toFixed(1)} m` }
+                callbacks: {
+                  label: ctx => {
+                    const prefix = ctx.dataset.label === 'Observation' ? ' ★ ' : ' ';
+                    return `${prefix}${ctx.parsed.y.toFixed(1)} m`;
+                  }
+                }
               }
             }
           }
         });
+
+        renderObsList();
       })
       .catch(err => {
         const el = document.getElementById('error');
