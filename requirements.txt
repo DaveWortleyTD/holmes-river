@@ -1,0 +1,9 @@
+anthropic>=0.40
+fastapi
+uvicorn[standard]
+httpx
+apscheduler
+pydantic-settings
+python-dotenv
+torch
+torchvision
